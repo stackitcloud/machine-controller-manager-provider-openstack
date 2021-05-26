@@ -49,6 +49,8 @@ type MachineProviderConfigSpec struct {
 	// Networks is a list of networks the instance should belong to. Networks is mutually exclusive with the NetworkID option
 	// and only one should be specified.
 	Networks []OpenStackNetwork
+	// VolumeType
+	VolumeType *string
 }
 
 // OpenStacknetwork describes an network this instance should belong to.

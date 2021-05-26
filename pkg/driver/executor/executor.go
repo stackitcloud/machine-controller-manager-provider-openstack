@@ -8,9 +8,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gophercloud/gophercloud/pagination"
 	"strings"
 	"time"
 
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
+	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
+
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
@@ -29,6 +35,7 @@ import (
 // Executor concretely handles the execution of requests to the machine controller. Executor is responsible
 // for communicating with OpenStack services and orchestrates the operations.
 type Executor struct {
+	Storage client.Storage
 	Compute client.Compute
 	Network client.Network
 	Config  *api.MachineProviderConfig
@@ -194,6 +201,7 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 	rootDiskSize := ex.Config.Spec.RootDiskSize
 	useConfigDrive := ex.Config.Spec.UseConfigDrive
 	flavorName := ex.Config.Spec.FlavorName
+	volumeType := ex.Config.Spec.VolumeType
 
 	var (
 		imageRef   string
@@ -242,11 +250,46 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 		}
 	}
 
+	var volume volumes.Volume
+
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
-		blockDevices, err := resourceInstanceBlockDevicesV2(rootDiskSize, imageRef)
-		if err != nil {
-			return nil, err
+		var blockDevices []bootfromvolume.BlockDevice
+
+		if volumeType == nil {
+			blockDevices, err = resourceInstanceBlockDevicesV2(rootDiskSize, imageRef, nil)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// volumeType is defined, so we have to create the volume beforehand and
+			// add it to bootfromvolume.BlockDevice
+
+			// check if volume already created
+			volume, err = ex.checkBootVolume(machineName)
+			if err != nil {
+				return nil, err
+			}
+
+			// if not created before, create now
+			if volume.ID == "" {
+				klog.V(3).Infof("creating boot volume for %s", d.MachineName)
+				volume, err = createBootVolume(cinder, rootDiskSize, volumeType, availabilityZone, imageRef, d.MachineName)
+				if err != nil {
+					volerr := volumes.Delete(cinder, volume.ID, volumes.DeleteOpts{Cascade: true}).ExtractErr()
+					return "", "", fmt.Errorf("error volume creation, %s and deletion %s", err, volerr)
+				}
+			}
+			err = waitForVolumeStatus(cinder, volume.ID, []string{"downloading", "creating"}, []string{"available"}, 600)
+			if err != nil {
+				volerr := volumes.Delete(cinder, volume.ID, volumes.DeleteOpts{Cascade: true}).ExtractErr()
+				return "", "", fmt.Errorf("error waiting for volume, %s and deletion %s", err, volerr)
+			}
+
+			blockDevices, err = resourceInstanceBlockDevicesV2(rootDiskSize, imageRef, &volume.ID)
+			if err != nil {
+				return "", "", d.deleteOnFail(err)
+			}
 		}
 
 		createOpts = &bootfromvolume.CreateOptsExt{
@@ -259,15 +302,46 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 	return ex.Compute.CreateServer(createOpts)
 }
 
-func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfromvolume.BlockDevice, error) {
+func (ex *Executor) checkBootVolume(name string) (res volumes.Volume, err error) {
+	opts := volumes.ListOpts{
+		Name: name,
+	}
+	pager := ex.Storage.ListVolume(opts)
+	err = pager.EachPage(func(page pagination.Page) (bool, error) {
+		volList, err := volumes.ExtractVolumes(page)
+		if err != nil {
+			return false, fmt.Errorf("error extract volume")
+		}
+		for _, p := range volList {
+			if p.Name == name {
+				res = p
+			}
+		}
+		return false, err
+	})
+	return volumes.Volume{}, nil
+}
+
+func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string, volumeID *string) ([]bootfromvolume.BlockDevice, error) {
 	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
-	blockDeviceOpts[0] = bootfromvolume.BlockDevice{
-		UUID:                imageID,
-		VolumeSize:          rootDiskSize,
-		BootIndex:           0,
-		DeleteOnTermination: true,
-		SourceType:          "image",
-		DestinationType:     "volume",
+	if volumeID != nil {
+		blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+			DeleteOnTermination: true,
+			DestinationType:     bootfromvolume.DestinationVolume,
+			SourceType:          bootfromvolume.SourceVolume,
+			UUID:                *volumeID,
+			BootIndex:           0,
+		}
+
+	} else {
+		blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+			UUID:                imageID,
+			VolumeSize:          rootDiskSize,
+			BootIndex:           0,
+			DeleteOnTermination: true,
+			SourceType:          "image",
+			DestinationType:     "volume",
+		}
 	}
 	klog.V(3).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
 	return blockDeviceOpts, nil
@@ -308,10 +382,12 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 				continue
 			}
 
-			if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
-				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
-			}); err != nil {
-				return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
+			//TODO Change allowed address pairs method
+				if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
+					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
+				}); err != nil {
+					return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
+
 			}
 		}
 	}
