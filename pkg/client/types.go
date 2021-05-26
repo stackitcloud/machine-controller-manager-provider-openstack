@@ -5,6 +5,7 @@
 package client
 
 import (
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v2/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
@@ -49,4 +50,22 @@ type Network interface {
 	GroupIDFromName(name string) (string, error)
 	// PortIDFromName resolves the given port name to a unique ID.
 	PortIDFromName(name string) (string, error)
+}
+
+// Storage is an interface for communication with Cinder service.
+type Storage interface {
+	// GetVolume fetches the volume data from the supplied ID.
+	GetVolume(id string) (*volumes.Volume, error)
+
+	// CreateVolume creates a volume.
+	CreateVolume(opts volumes.CreateOptsBuilder) (*volumes.Volume, error)
+	// ListVolumes lists all volumes.
+	ListVolumes(opts volumes.ListOptsBuilder) ([]volumes.Volume, error)
+	// UpdateVolume updates the volume from the supplied id.
+	UpdateVolume(id string, opts volumes.UpdateOptsBuilder) (*volumes.Volume, error)
+	// DeleteVolume deletes the volume from the supplied id.
+	DeleteVolume(id string, opts volumes.DeleteOptsBuilder) error
+
+	// VolumeIDFromName resolves the given volume name to a unique ID.
+	VolumeIDFromName(name string) (string, error)
 }
