@@ -170,3 +170,12 @@ func (f *Factory) Network(opts ...Option) (Network, error) {
 
 	return newNeutronV2(f.providerClient, eo)
 }
+
+func (f *Factory) Storage(opts ...Option) (Storage, error) {
+	eo := gophercloud.EndpointOpts{}
+	for _, opt := range opts {
+		eo = opt(eo)
+	}
+
+	return newCinderV2(f.providerClient, eo)
+}
