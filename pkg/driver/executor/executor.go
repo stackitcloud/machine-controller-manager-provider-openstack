@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gophercloud/gophercloud/pagination"
 	"strings"
 	"time"
 
@@ -26,10 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
-
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
-	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 )
 
 // Executor concretely handles the execution of requests to the machine controller. Executor is responsible
@@ -53,8 +48,13 @@ func NewExecutor(factory *client.Factory, config *api.MachineProviderConfig) (*E
 		klog.Errorf("failed to create network client for executor: %v", err)
 		return nil, err
 	}
-
+	storageClient, err := factory.Storage(client.WithRegion(config.Spec.Region))
+	if err != nil {
+		klog.Errorf("failed to create network client for executor: %v", err)
+		return nil, err
+	}
 	ex := &Executor{
+		Storage: storageClient,
 		Compute: computeClient,
 		Network: networkClient,
 		Config:  config,
@@ -74,6 +74,21 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		klog.Infof("attempting to delete server [Name=%q] after unsuccessful create operation with error: %v", machineName, err)
 		if errIn := ex.DeleteMachine(ctx, machineName, ""); errIn != nil {
 			return fmt.Errorf("error deleting server [Name=%q] after unsuccessful creation attempt: %v. Original error: %w", machineName, errIn, err)
+		}
+		if !isEmptyString(ex.Config.Spec.VolumeType) {
+			var volume volumes.Volume
+			var errChk, errDel error
+			if volume, errChk = ex.checkBootVolume(machineName); err != nil && !client.IsNotFoundError(err) {
+				return fmt.Errorf("error checking volume [ID=%q]: %v. Original error: %v", machineName, errChk, err)
+			}
+
+			volOpts := volumes.DeleteOpts{Cascade: true}
+			if client.IsNotFoundError(err) {
+				errDel = ex.Storage.DeleteVolume(volume.ID, volOpts)
+				if errDel != nil {
+					return fmt.Errorf("error deleting volume [ID=%q]: %v. Original error: %v", machineName, errDel, err)
+				}
+			}
 		}
 		return err
 	}
@@ -190,6 +205,37 @@ func (ex *Executor) waitForStatus(serverID string, pending []string, target []st
 	})
 }
 
+// waitForVolumeStatus blocks until the server with the specified ID reaches one of the target status.
+// waitForVolumeStatus will fail if an error occurs, the operation it timeouts after the specified time, or the volume status is not in the pending list.
+func (ex *Executor) waitForVolumeStatus(volumeID string, pending []string, target []string, secs int) error {
+	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
+		current, err := ex.Storage.GetVolume(volumeID)
+		if err != nil {
+			if client.IsNotFoundError(err) && strSliceContains(target, client.VolumeStatusDeleting) {
+				return true, nil
+			}
+			return false, err
+		}
+
+		klog.V(5).Infof("waiting for volume [ID=%q] and current status %v, to reach status %v.", volumeID, current.Status, target)
+		if strSliceContains(target, current.Status) {
+			return true, nil
+		}
+
+		// if there is no pending statuses defined or current status is in the pending list, then continue polling
+		if len(pending) == 0 || strSliceContains(pending, current.Status) {
+			return false, nil
+		}
+
+		retErr := fmt.Errorf("volume [ID=%q] reached unexpected status %q", volumeID, current.Status)
+		if current.Status == client.VolumeStatusError {
+			retErr = fmt.Errorf("%s", retErr)
+		}
+
+		return false, retErr
+	})
+}
+
 // deployServer handles creating the server instance.
 func (ex *Executor) deployServer(machineName string, userData []byte, nws []servers.Network) (*servers.Server, error) {
 	keyName := ex.Config.Spec.KeyName
@@ -273,22 +319,23 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 
 			// if not created before, create now
 			if volume.ID == "" {
-				klog.V(3).Infof("creating boot volume for %s", d.MachineName)
-				volume, err = createBootVolume(cinder, rootDiskSize, volumeType, availabilityZone, imageRef, d.MachineName)
+				klog.V(3).Infof("creating boot volume for %s", machineName)
+				volume, err = ex.createBootVolume(rootDiskSize, volumeType, availabilityZone, imageRef, machineName)
 				if err != nil {
-					volerr := volumes.Delete(cinder, volume.ID, volumes.DeleteOpts{Cascade: true}).ExtractErr()
-					return "", "", fmt.Errorf("error volume creation, %s and deletion %s", err, volerr)
+					volerr := ex.Storage.DeleteVolume(volume.ID, volumes.DeleteOpts{Cascade: true})
+					return &servers.Server{}, fmt.Errorf("error volume creation, %s and deletion %s", err, volerr)
 				}
 			}
-			err = waitForVolumeStatus(cinder, volume.ID, []string{"downloading", "creating"}, []string{"available"}, 600)
+			err = ex.waitForVolumeStatus(volume.ID, []string{client.VolumeStatusDownloading, client.VolumeStatusCreating}, []string{client.VolumeStatusAvailable}, 600)
 			if err != nil {
-				volerr := volumes.Delete(cinder, volume.ID, volumes.DeleteOpts{Cascade: true}).ExtractErr()
-				return "", "", fmt.Errorf("error waiting for volume, %s and deletion %s", err, volerr)
+				volerr := ex.Storage.DeleteVolume(volume.ID, volumes.DeleteOpts{Cascade: true})
+				return &servers.Server{}, fmt.Errorf("error waiting for volume, %s and deletion %s", err, volerr)
 			}
 
 			blockDevices, err = resourceInstanceBlockDevicesV2(rootDiskSize, imageRef, &volume.ID)
 			if err != nil {
-				return "", "", d.deleteOnFail(err)
+				volerr := ex.Storage.DeleteVolume(volume.ID, volumes.DeleteOpts{Cascade: true})
+				return &servers.Server{}, fmt.Errorf("error blockdevice creation, %s and deletion %s", err, volerr)
 			}
 		}
 
@@ -302,23 +349,33 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 	return ex.Compute.CreateServer(createOpts)
 }
 
+func (ex *Executor) createBootVolume(size int, volumeType *string, zone string, imageRef string, name string) (volumes.Volume, error) {
+	createOpts := volumes.CreateOpts{
+		Size:             size,
+		AvailabilityZone: zone,
+		Name:             name,
+		ImageID:          imageRef,
+		VolumeType:       *volumeType,
+	}
+
+	volume, err := ex.Storage.CreateVolume(createOpts)
+	if err != nil {
+		return volumes.Volume{}, err
+	}
+
+	return *volume, nil
+}
+
 func (ex *Executor) checkBootVolume(name string) (res volumes.Volume, err error) {
 	opts := volumes.ListOpts{
 		Name: name,
 	}
-	pager := ex.Storage.ListVolume(opts)
-	err = pager.EachPage(func(page pagination.Page) (bool, error) {
-		volList, err := volumes.ExtractVolumes(page)
-		if err != nil {
-			return false, fmt.Errorf("error extract volume")
+	volume, err := ex.Storage.ListVolumes(opts)
+	for _, vol := range volume {
+		if vol.Name == name {
+			return vol, nil
 		}
-		for _, p := range volList {
-			if p.Name == name {
-				res = p
-			}
-		}
-		return false, err
-	})
+	}
 	return volumes.Volume{}, nil
 }
 
@@ -382,9 +439,12 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 				continue
 			}
 
-			//TODO Change allowed address pairs method
+			var allowedAddressPairs []ports.AddressPair
+				for _, podCidr := range strings.Split(ex.Config.Spec.PodNetworkCidr, ",") {
+					allowedAddressPairs = append(allowedAddressPairs, ports.AddressPair{IPAddress: podCidr})
+				}
 				if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
-					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
+					AllowedAddressPairs: &allowedAddressPairs,
 				}); err != nil {
 					return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
 
@@ -454,7 +514,20 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	} else if !errors.Is(err, ErrNotFound) {
 		return err
 	}
+	if !isEmptyString(ex.Config.Spec.VolumeType) {
+		var volume volumes.Volume
+		if volume, err = ex.checkBootVolume(machineName); err != nil && !client.IsNotFoundError(err) {
+			return fmt.Errorf("error checking volume [ID=%q]: %v", machineName, err)
+		}
 
+		volOpts := volumes.DeleteOpts{Cascade: true}
+		if client.IsNotFoundError(err) {
+			err := ex.Storage.DeleteVolume(volume.ID, volOpts)
+			if err != nil {
+				return fmt.Errorf("error deleting volume [ID=%q]: %v", machineName, err)
+			}
+		}
+	}
 	if ex.isUserManagedNetwork() {
 		return ex.deletePort(ctx, machineName)
 	}

@@ -9,6 +9,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	//VolumeStatusAvailable indicates volume is available
+	VolumeStatusAvailable = "available"
+	//VolumeStatusCreating indicates volume is creating
+	VolumeStatusCreating = "creating"
+	//VolumeStatusDownloading indicates volume is downloading
+	VolumeStatusDownloading = "downloading"
+	//VolumeStatusDeleting indicates volume is deleting
+	VolumeStatusDeleting = "deleting"
+	//VolumeStatusError indicates volume is in error state
+	VolumeStatusError = "error"
+)
+
 var (
 	_ Storage = &cinderV2{}
 )
