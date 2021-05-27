@@ -206,6 +206,18 @@ string
 and only one should be specified.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumeType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeType</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -396,6 +408,18 @@ string
 <td>
 <p>Networks is a list of networks the instance should belong to. Networks is mutually exclusive with the NetworkID option
 and only one should be specified.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VolumeType</p>
 </td>
 </tr>
 </tbody>

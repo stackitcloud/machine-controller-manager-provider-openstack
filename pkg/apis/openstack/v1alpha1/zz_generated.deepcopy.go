@@ -73,6 +73,11 @@ func (in *MachineProviderConfigSpec) DeepCopyInto(out *MachineProviderConfigSpec
 		*out = make([]OpenStackNetwork, len(*in))
 		copy(*out, *in)
 	}
+	if in.VolumeType != nil {
+		in, out := &in.VolumeType, &out.VolumeType
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
