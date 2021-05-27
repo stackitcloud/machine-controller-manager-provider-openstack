@@ -63,12 +63,14 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 			SecurityGroups:   os.Spec.SecurityGroups,
 			Tags:             os.Spec.Tags,
 			NetworkID:        os.Spec.NetworkID,
+			NetworkIDv6:      os.Spec.NetworkIDv6,
 			SubnetID:         os.Spec.SubnetID,
 			PodNetworkCidr:   os.Spec.PodNetworkCidr,
 			RootDiskSize:     os.Spec.RootDiskSize,
 			UseConfigDrive:   os.Spec.UseConfigDrive,
 			ServerGroupID:    os.Spec.ServerGroupID,
 			Networks:         migratedNetworks,
+			VolumeType:       &os.Spec.VolumeType,
 		},
 	}
 
