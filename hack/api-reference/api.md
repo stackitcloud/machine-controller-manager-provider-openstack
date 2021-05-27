@@ -137,6 +137,17 @@ string
 </tr>
 <tr>
 <td>
+<code>networkIDv6</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>NetworkIDv6 is the ID of the network the instance should belong to.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>subnetID</code></br>
 <em>
 string
@@ -337,6 +348,17 @@ string
 </td>
 <td>
 <p>NetworkID is the ID of the network the instance should belong to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>networkIDv6</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>NetworkIDv6 is the ID of the network the instance should belong to.</p>
 </td>
 </tr>
 <tr>
