@@ -555,6 +555,8 @@ github.com/spf13/viper v1.6.1/go.mod h1:t3iDnF5Jlj76alVNuyFBk5oUMCvsrkbvZK0WQdfD
 github.com/spf13/viper v1.7.0/go.mod h1:8WkrPz2fc9jxqZNCJI/76HCieCp4Q8HaLFoCha5qpdg=
 github.com/stackitcloud/machine-controller-manager v0.34.1-ske-1 h1:1STSydt6A4xO5HZcbJ4+iwpVY8bYqbJpRKQLbmtPOGg=
 github.com/stackitcloud/machine-controller-manager v0.34.1-ske-1/go.mod h1:jxxE+mGgXwg4iPlCHTG4GtUfK2CcHA6yYoIIowoxOZU=
+github.com/stackitcloud/machine-controller-manager v0.39.0-ske-1 h1:YbjrXIVec3g4+qN/lKQ9+Z+HfdqkEQms7OEaoCzB2KQ=
+github.com/stackitcloud/machine-controller-manager v0.39.0-ske-1/go.mod h1:ZCAylEQMDmaYX/C72aaSQZ0QknwXeVvTnujU5a/Rdq4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.2.0/go.mod h1:qt09Ya8vawLte6SNmTgCsAVtYtaKzEcn8ATUoHMkEqE=

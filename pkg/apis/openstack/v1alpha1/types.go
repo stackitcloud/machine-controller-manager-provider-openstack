@@ -37,6 +37,8 @@ type MachineProviderConfigSpec struct {
 	Tags map[string]string `json:"tags,omitempty"`
 	// NetworkID is the ID of the network the instance should belong to.
 	NetworkID string `json:"networkID"`
+	// NetworkIDv6 is the ID of the network the instance should belong to.
+	NetworkIDv6 string `json:"networkIDv6,omitempty"`
 	// SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified
 	// +optional
 	SubnetID *string `json:"subnetID,omitempty"`

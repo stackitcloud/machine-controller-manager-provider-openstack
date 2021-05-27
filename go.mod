@@ -23,6 +23,7 @@ require (
 )
 
 replace (
+    github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.39.0-ske-1
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.0
 	github.com/onsi/gomega => github.com/onsi/gomega v1.5.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
