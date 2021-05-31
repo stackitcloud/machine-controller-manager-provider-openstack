@@ -185,7 +185,7 @@ func (ex *Executor) resolveServerNetworks(machineName string) ([]servers.Network
 // waitForStatus blocks until the server with the specified ID reaches one of the target status.
 // waitForStatus will fail if an error occurs, the operation it timeouts after the specified time, or the server status is not in the pending list.
 func (ex *Executor) waitForStatus(serverID string, pending []string, target []string, secs int) error {
-	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
+	return wait.Poll(5*time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
 		current, err := ex.Compute.GetServer(serverID)
 		if err != nil {
 			if client.IsNotFoundError(err) && strSliceContains(target, client.ServerStatusDeleted) {
@@ -216,7 +216,7 @@ func (ex *Executor) waitForStatus(serverID string, pending []string, target []st
 // waitForVolumeStatus blocks until the server with the specified ID reaches one of the target status.
 // waitForVolumeStatus will fail if an error occurs, the operation it timeouts after the specified time, or the volume status is not in the pending list.
 func (ex *Executor) waitForVolumeStatus(volumeID string, pending []string, target []string, secs int) error {
-	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
+	return wait.Poll(5*time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
 		current, err := ex.Storage.GetVolume(volumeID)
 		if err != nil {
 			if client.IsNotFoundError(err) && strSliceContains(target, client.VolumeStatusDeleting) {
