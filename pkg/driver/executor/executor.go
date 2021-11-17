@@ -144,7 +144,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 	)
 
 	if true {
-		return nil, fmt.Errorf("FML!! subnet: %v, isUserManagedNetwork: %v ", subnetIDs, ex.isUserManagedNetwork())
+		return nil, fmt.Errorf("FML!! subnet: %v, isUserManagedNetwork: %v ", ex.Config.Spec.SubnetIDs, ex.isUserManagedNetwork())
 	}
 
 	klog.V(3).Infof("resolving network setup for machine [Name=%q]", machineName)

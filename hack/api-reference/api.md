@@ -160,7 +160,7 @@ string
 </tr>
 <tr>
 <td>
-<code>subnet_ids</code></br>
+<code>subnetIDs</code></br>
 <em>
 []string
 </em>
@@ -387,7 +387,7 @@ string
 </tr>
 <tr>
 <td>
-<code>subnet_ids</code></br>
+<code>subnetIDs</code></br>
 <em>
 []string
 </em>
