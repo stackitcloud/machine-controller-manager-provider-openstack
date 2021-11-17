@@ -44,7 +44,7 @@ type MachineProviderConfigSpec struct {
 	SubnetID *string `json:"subnetID,omitempty"`
 	// SubnetIDs contains all subnets the instance should belong to.
 	// +optional
-	SubnetIDs []string `json:"subnet_ids,omitempty"`
+	SubnetIDs []string `json:"subnetIDs,omitempty"`
 	// PodNetworkCidr is the CIDR range for the pods assigned to this instance.
 	PodNetworkCidr string `json:"podNetworkCidr"`
 	// The size of the root disk used for the instance.
