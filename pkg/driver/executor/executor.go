@@ -143,6 +143,10 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 		serverNetworks = make([]servers.Network, 0)
 	)
 
+	if true {
+		return nil, fmt.Errorf("FML!! subnet: %v, isUserManagedNetwork: %v ", subnetIDs, ex.isUserManagedNetwork())
+	}
+
 	klog.V(3).Infof("resolving network setup for machine [Name=%q]", machineName)
 	// If SubnetID is specified in addition to NetworkID, we have to preallocate a Neutron Port to force the VMs to get IP from the subnet's range.
 	if ex.isUserManagedNetwork() {
