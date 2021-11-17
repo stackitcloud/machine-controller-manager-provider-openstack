@@ -427,11 +427,13 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 			addressPairFound := false
 
 			for _, pair := range port.AllowedAddressPairs {
-				if pair.IPAddress == ex.Config.Spec.PodNetworkCidr {
-					klog.V(3).Infof("port [ID=%q] already allows pod network CIDR range. Skipping update...", port.ID)
-					addressPairFound = true
-					// break inner loop if target found
-					break
+				for _, podCidr := range strings.Split(ex.Config.Spec.PodNetworkCidr, ",") {
+					if pair.IPAddress == podCidr {
+						klog.V(3).Infof("port [ID=%q] already allows pod network CIDR range. Skipping update...", port.ID)
+						addressPairFound = true
+						// break inner loop if target found
+						break
+					}
 				}
 			}
 			// continue outer loop if target found
@@ -440,13 +442,13 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 			}
 
 			var allowedAddressPairs []ports.AddressPair
-				for _, podCidr := range strings.Split(ex.Config.Spec.PodNetworkCidr, ",") {
-					allowedAddressPairs = append(allowedAddressPairs, ports.AddressPair{IPAddress: podCidr})
-				}
-				if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
-					AllowedAddressPairs: &allowedAddressPairs,
-				}); err != nil {
-					return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
+			for _, podCidr := range strings.Split(ex.Config.Spec.PodNetworkCidr, ",") {
+				allowedAddressPairs = append(allowedAddressPairs, ports.AddressPair{IPAddress: podCidr})
+			}
+			if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
+				AllowedAddressPairs: &allowedAddressPairs,
+			}); err != nil {
+				return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
 
 			}
 		}
@@ -563,11 +565,16 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 		securityGroupIDs = append(securityGroupIDs, securityGroupID)
 	}
 
+	var allowedAddressPairs []ports.AddressPair
+	for _, podCidr := range strings.Split(ex.Config.Spec.PodNetworkCidr, ",") {
+		allowedAddressPairs = append(allowedAddressPairs, ports.AddressPair{IPAddress: podCidr})
+	}
+
 	port, err := ex.Network.CreatePort(&ports.CreateOpts{
 		Name:                machineName,
 		NetworkID:           ex.Config.Spec.NetworkID,
 		FixedIPs:            []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
-		AllowedAddressPairs: []ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
+		AllowedAddressPairs: allowedAddressPairs,
 		SecurityGroups:      &securityGroupIDs,
 	})
 
