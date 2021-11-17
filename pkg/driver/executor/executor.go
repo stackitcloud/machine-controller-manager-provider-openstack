@@ -131,12 +131,7 @@ func (ex *Executor) getSubnetIDs() []string {
 		subnetList = append(subnetList, *ex.Config.Spec.SubnetID)
 	}
 
-	var subnetIDSet sets.String
-	for _, subnetID := range subnetList {
-		subnetIDSet.Insert(subnetID)
-	}
-
-	return subnetIDSet.List()
+	return sets.NewString(subnetList...).List()
 }
 
 // resolveServerNetworks resolves the network configuration for the server.
