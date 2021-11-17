@@ -123,24 +123,42 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 	return encodeProviderID(ex.Config.Spec.Region, server.ID), nil
 }
 
+func (ex *Executor) getSubnetIDs() []string {
+	var subnetList []string
+
+	subnetList = append(subnetList, ex.Config.Spec.SubnetIDs...)
+	if ex.Config.Spec.SubnetID != nil {
+		subnetList = append(subnetList, *ex.Config.Spec.SubnetID)
+	}
+
+	var subnetIDSet sets.String
+	for _, subnetID := range subnetList {
+		subnetIDSet.Insert(subnetID)
+	}
+
+	return subnetIDSet.List()
+}
+
 // resolveServerNetworks resolves the network configuration for the server.
 func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName string) ([]servers.Network, error) {
 	var (
 		networkID      = ex.Config.Spec.NetworkID
-		subnetID       = ex.Config.Spec.SubnetID
 		networks       = ex.Config.Spec.Networks
+		subnetIDs      = ex.getSubnetIDs()
 		serverNetworks = make([]servers.Network, 0)
 	)
 
 	klog.V(3).Infof("resolving network setup for machine [Name=%q]", machineName)
 	// If SubnetID is specified in addition to NetworkID, we have to preallocate a Neutron Port to force the VMs to get IP from the subnet's range.
 	if ex.isUserManagedNetwork() {
-		// check if the subnet exists
-		if _, err := ex.Network.GetSubnet(*subnetID); err != nil {
-			return nil, err
+		// check if the subnets exists
+		for _, subnetID := range subnetIDs {
+			if _, err := ex.Network.GetSubnet(subnetID); err != nil {
+				return nil, err
+			}
 		}
 
-		klog.V(3).Infof("deploying machine [Name=%q] in subnet [ID=%q]", machineName, *subnetID)
+		klog.V(3).Infof("deploying machine [Name=%q] in subnet [ID=%q]", machineName, subnetIDs)
 		portID, err := ex.getOrCreatePort(ctx, machineName)
 		if err != nil {
 			return nil, err
@@ -570,10 +588,17 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 		allowedAddressPairs = append(allowedAddressPairs, ports.AddressPair{IPAddress: podCidr})
 	}
 
+	portIPs := make([]ports.IP, 0)
+	for _, subnetID := range ex.getSubnetIDs() {
+		portIPs = append(portIPs, ports.IP{
+			SubnetID: subnetID,
+		})
+	}
+
 	port, err := ex.Network.CreatePort(&ports.CreateOpts{
 		Name:                machineName,
 		NetworkID:           ex.Config.Spec.NetworkID,
-		FixedIPs:            []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
+		FixedIPs:            portIPs,
 		AllowedAddressPairs: allowedAddressPairs,
 		SecurityGroups:      &securityGroupIDs,
 	})
@@ -747,5 +772,5 @@ func (ex *Executor) listServers(_ context.Context) ([]servers.Server, error) {
 
 // isUserManagedNetwork returns true if the port used by the machine will be created and managed by MCM.
 func (ex *Executor) isUserManagedNetwork() bool {
-	return !isEmptyString(pointer.StringPtr(ex.Config.Spec.NetworkID)) && !isEmptyString(ex.Config.Spec.SubnetID)
+	return !isEmptyString(pointer.StringPtr(ex.Config.Spec.NetworkID)) && len(ex.getSubnetIDs()) != 0
 }
