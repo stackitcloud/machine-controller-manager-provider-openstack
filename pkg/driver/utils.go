@@ -35,9 +35,6 @@ func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*opensta
 		return nil, fmt.Errorf("failed to decode provider spec: %v", err)
 	}
 
-	if true {
-		return nil, fmt.Errorf("FML!!! json: %s \n parsed %v", json, cfg.Spec)
-	}
 	return cfg, nil
 }
 
