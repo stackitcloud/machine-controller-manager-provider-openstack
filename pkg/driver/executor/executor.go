@@ -78,12 +78,12 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		if !isEmptyString(ex.Config.Spec.VolumeType) {
 			var volume volumes.Volume
 			var errChk, errDel error
-			if volume, errChk = ex.checkBootVolume(machineName); err != nil && !client.IsNotFoundError(err) {
+			if volume, errChk = ex.checkBootVolume(machineName); errChk != nil && !client.IsNotFoundError(errChk) {
 				return fmt.Errorf("error checking volume [ID=%q]: %v. Original error: %v", machineName, errChk, err)
 			}
 
 			volOpts := volumes.DeleteOpts{Cascade: true}
-			if client.IsNotFoundError(err) {
+			if !client.IsNotFoundError(errChk) {
 				errDel = ex.Storage.DeleteVolume(volume.ID, volOpts)
 				if errDel != nil {
 					return fmt.Errorf("error deleting volume [ID=%q]: %v. Original error: %v", machineName, errDel, err)
