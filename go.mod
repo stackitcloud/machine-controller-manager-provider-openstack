@@ -113,6 +113,7 @@ require (
 replace (
 	github.com/gardener/gardener-resource-manager/api => github.com/gardener/gardener-resource-manager/api v0.25.0
 	github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.0.0-20220401112722-8bdbf80bf6f8
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.1
 	k8s.io/api => k8s.io/api v0.20.6
 	k8s.io/apimachinery => k8s.io/apimachinery v0.20.6
 	k8s.io/client-go => k8s.io/client-go v0.20.6
