@@ -58,6 +58,11 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 		})
 	}
 
+	var subnetIDs []string
+	if os.Spec.SubnetID != nil {
+		subnetIDs = append(subnetIDs, *os.Spec.SubnetID)
+	}
+
 	cfg := &v1alpha1.MachineProviderConfig{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "MachineProviderConfig",
@@ -73,7 +78,9 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 			SecurityGroups:   os.Spec.SecurityGroups,
 			Tags:             os.Spec.Tags,
 			NetworkID:        os.Spec.NetworkID,
+			NetworkIDv6:      os.Spec.NetworkIDv6,
 			SubnetID:         os.Spec.SubnetID,
+			SubnetIDs:        subnetIDs,
 			PodNetworkCidr:   os.Spec.PodNetworkCidr,
 			RootDiskSize:     os.Spec.RootDiskSize,
 			UseConfigDrive:   os.Spec.UseConfigDrive,

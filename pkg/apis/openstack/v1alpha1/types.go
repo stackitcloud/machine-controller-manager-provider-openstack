@@ -39,9 +39,14 @@ type MachineProviderConfigSpec struct {
 	Tags map[string]string `json:"tags,omitempty"`
 	// NetworkID is the ID of the network the instance should belong to.
 	NetworkID string `json:"networkID"`
+	// NetworkIDv6 is the ID of the network the instance should belong to.
+	NetworkIDv6 string `json:"networkIDv6,omitempty"`
 	// SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified
 	// +optional
 	SubnetID *string `json:"subnetID,omitempty"`
+	// SubnetIDs contains all subnets the instance should belong to.
+	// +optional
+	SubnetIDs []string `json:"subnetIDs,omitempty"`
 	// PodNetworkCidr is the CIDR range for the pods assigned to this instance.
 	PodNetworkCidr string `json:"podNetworkCidr"`
 	// The size of the root disk used for the instance.

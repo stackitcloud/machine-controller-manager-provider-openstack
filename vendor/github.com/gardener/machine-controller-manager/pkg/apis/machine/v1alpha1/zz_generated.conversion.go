@@ -2714,7 +2714,17 @@ func Convert_machine_OpenStackMachineClass_To_v1alpha1_OpenStackMachineClass(in 
 
 func autoConvert_v1alpha1_OpenStackMachineClassList_To_machine_OpenStackMachineClassList(in *OpenStackMachineClassList, out *machine.OpenStackMachineClassList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]machine.OpenStackMachineClass)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]machine.OpenStackMachineClass, len(*in))
+		for i := range *in {
+			if err := Convert_v1alpha1_OpenStackMachineClass_To_machine_OpenStackMachineClass(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -2725,7 +2735,17 @@ func Convert_v1alpha1_OpenStackMachineClassList_To_machine_OpenStackMachineClass
 
 func autoConvert_machine_OpenStackMachineClassList_To_v1alpha1_OpenStackMachineClassList(in *machine.OpenStackMachineClassList, out *OpenStackMachineClassList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
-	out.Items = *(*[]OpenStackMachineClass)(unsafe.Pointer(&in.Items))
+	if in.Items != nil {
+		in, out := &in.Items, &out.Items
+		*out = make([]OpenStackMachineClass, len(*in))
+		for i := range *in {
+			if err := Convert_machine_OpenStackMachineClass_To_v1alpha1_OpenStackMachineClass(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
 	return nil
 }
 
@@ -2745,6 +2765,7 @@ func autoConvert_v1alpha1_OpenStackMachineClassSpec_To_machine_OpenStackMachineC
 	out.Tags = *(*map[string]string)(unsafe.Pointer(&in.Tags))
 	out.NetworkID = in.NetworkID
 	out.Networks = *(*[]machine.OpenStackNetwork)(unsafe.Pointer(&in.Networks))
+	out.NetworkIDv6 = in.NetworkIDv6
 	out.SubnetID = (*string)(unsafe.Pointer(in.SubnetID))
 	out.SecretRef = (*v1.SecretReference)(unsafe.Pointer(in.SecretRef))
 	out.CredentialsSecretRef = (*v1.SecretReference)(unsafe.Pointer(in.CredentialsSecretRef))
@@ -2770,6 +2791,7 @@ func autoConvert_machine_OpenStackMachineClassSpec_To_v1alpha1_OpenStackMachineC
 	out.SecurityGroups = *(*[]string)(unsafe.Pointer(&in.SecurityGroups))
 	out.Tags = *(*map[string]string)(unsafe.Pointer(&in.Tags))
 	out.NetworkID = in.NetworkID
+	out.NetworkIDv6 = in.NetworkIDv6
 	out.Networks = *(*[]OpenStackNetwork)(unsafe.Pointer(&in.Networks))
 	out.SubnetID = (*string)(unsafe.Pointer(in.SubnetID))
 	out.SecretRef = (*v1.SecretReference)(unsafe.Pointer(in.SecretRef))
