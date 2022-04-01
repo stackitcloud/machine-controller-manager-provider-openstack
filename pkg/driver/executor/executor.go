@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
@@ -107,24 +108,37 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 	return encodeProviderID(ex.Config.Spec.Region, server.ID), nil
 }
 
+func (ex *Executor) getSubnetIDs() []string {
+	var subnetList []string
+
+	subnetList = append(subnetList, ex.Config.Spec.SubnetIDs...)
+	if ex.Config.Spec.SubnetID != nil {
+		subnetList = append(subnetList, *ex.Config.Spec.SubnetID)
+	}
+
+	return sets.NewString(subnetList...).List()
+}
+
 // resolveServerNetworks resolves the network configuration for the server.
 func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName string) ([]servers.Network, error) {
 	var (
 		networkID      = ex.Config.Spec.NetworkID
-		subnetID       = ex.Config.Spec.SubnetID
 		networks       = ex.Config.Spec.Networks
+		subnetIDs      = ex.getSubnetIDs()
 		serverNetworks = make([]servers.Network, 0)
 	)
 
 	klog.V(3).Infof("resolving network setup for machine [Name=%q]", machineName)
 	// If SubnetID is specified in addition to NetworkID, we have to preallocate a Neutron Port to force the VMs to get IP from the subnet's range.
 	if ex.isUserManagedNetwork() {
-		// check if the subnet exists
-		if _, err := ex.Network.GetSubnet(*subnetID); err != nil {
-			return nil, err
+		// check if the subnets exists
+		for _, subnetID := range subnetIDs {
+			if _, err := ex.Network.GetSubnet(subnetID); err != nil {
+				return nil, err
+			}
 		}
 
-		klog.V(3).Infof("deploying machine [Name=%q] in subnet [ID=%q]", machineName, *subnetID)
+		klog.V(3).Infof("deploying machine [Name=%q] in subnet [ID=%q]", machineName, subnetIDs)
 		portID, err := ex.getOrCreatePort(ctx, machineName)
 		if err != nil {
 			return nil, err
@@ -378,11 +392,13 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 			addressPairFound := false
 
 			for _, pair := range port.AllowedAddressPairs {
-				if pair.IPAddress == ex.Config.Spec.PodNetworkCidr {
-					klog.V(3).Infof("port [ID=%q] already allows pod network CIDR range. Skipping update...", port.ID)
-					addressPairFound = true
-					// break inner loop if target found
-					break
+				for _, podCidr := range strings.Split(ex.Config.Spec.PodNetworkCidr, ",") {
+					if pair.IPAddress == podCidr {
+						klog.V(3).Infof("port [ID=%q] already allows pod network CIDR range. Skipping update...", port.ID)
+						addressPairFound = true
+						// break inner loop if target found
+						break
+					}
 				}
 			}
 			// continue outer loop if target found
@@ -390,8 +406,13 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 				continue
 			}
 
+			var allowedAddressPairs []ports.AddressPair
+			for _, podCidr := range strings.Split(ex.Config.Spec.PodNetworkCidr, ",") {
+				allowedAddressPairs = append(allowedAddressPairs, ports.AddressPair{IPAddress: podCidr})
+			}
+
 			if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
-				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
+				AllowedAddressPairs: &allowedAddressPairs,
 			}); err != nil {
 				return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
 			}
@@ -503,11 +524,23 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 		securityGroupIDs = append(securityGroupIDs, securityGroupID)
 	}
 
+	var allowedAddressPairs []ports.AddressPair
+	for _, podCidr := range strings.Split(ex.Config.Spec.PodNetworkCidr, ",") {
+		allowedAddressPairs = append(allowedAddressPairs, ports.AddressPair{IPAddress: podCidr})
+	}
+
+	portIPs := make([]ports.IP, 0)
+	for _, subnetID := range ex.getSubnetIDs() {
+		portIPs = append(portIPs, ports.IP{
+			SubnetID: subnetID,
+		})
+	}
+
 	port, err := ex.Network.CreatePort(&ports.CreateOpts{
 		Name:                machineName,
 		NetworkID:           ex.Config.Spec.NetworkID,
-		FixedIPs:            []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
-		AllowedAddressPairs: []ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
+		FixedIPs:            portIPs,
+		AllowedAddressPairs: allowedAddressPairs,
 		SecurityGroups:      &securityGroupIDs,
 	})
 	if err != nil {
@@ -680,5 +713,5 @@ func (ex *Executor) listServers(_ context.Context) ([]servers.Server, error) {
 
 // isUserManagedNetwork returns true if the port used by the machine will be created and managed by MCM.
 func (ex *Executor) isUserManagedNetwork() bool {
-	return !isEmptyString(pointer.StringPtr(ex.Config.Spec.NetworkID)) && !isEmptyString(ex.Config.Spec.SubnetID)
+	return !isEmptyString(pointer.StringPtr(ex.Config.Spec.NetworkID)) && len(ex.getSubnetIDs()) != 0
 }
