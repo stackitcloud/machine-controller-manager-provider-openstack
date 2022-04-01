@@ -67,7 +67,7 @@ github.com/fsnotify/fsnotify
 github.com/gardener/gardener/hack
 github.com/gardener/gardener/hack/.ci
 github.com/gardener/gardener/hack/api-reference/template
-# github.com/gardener/machine-controller-manager v0.43.0
+# github.com/gardener/machine-controller-manager v0.43.0 => github.com/stackitcloud/machine-controller-manager v0.0.0-20220401112722-8bdbf80bf6f8
 ## explicit; go 1.17
 github.com/gardener/machine-controller-manager/pkg/apis/machine
 github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1
@@ -1038,6 +1038,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 # github.com/gardener/gardener-resource-manager/api => github.com/gardener/gardener-resource-manager/api v0.25.0
+# github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.0.0-20220401112722-8bdbf80bf6f8
 # k8s.io/api => k8s.io/api v0.20.6
 # k8s.io/apimachinery => k8s.io/apimachinery v0.20.6
 # k8s.io/client-go => k8s.io/client-go v0.20.6
