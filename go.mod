@@ -1,11 +1,11 @@
 module github.com/gardener/machine-controller-manager-provider-openstack
 
-go 1.18
+go 1.19
 
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
 	github.com/gardener/gardener v1.35.1
-	github.com/gardener/machine-controller-manager v0.46.0
+	github.com/gardener/machine-controller-manager v0.47.0
 	github.com/golang/mock v1.6.0
 	github.com/gophercloud/gophercloud v0.20.0
 	github.com/gophercloud/utils v0.0.0-20210909165623-d7085207ff6d
@@ -23,6 +23,7 @@ require (
 )
 
 require (
+	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
@@ -112,7 +113,7 @@ require (
 
 replace (
 	github.com/gardener/gardener-resource-manager/api => github.com/gardener/gardener-resource-manager/api v0.25.0
-	github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.46.0-ske-1
+	github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.46.1-ske-1.0.20230104103840-c26a83b347da
 	github.com/golang/mock => github.com/golang/mock v1.6.0
 	github.com/gophercloud/gophercloud => github.com/gophercloud/gophercloud v0.20.0
 	github.com/gophercloud/utils => github.com/gophercloud/utils v0.0.0-20210909165623-d7085207ff6d
