@@ -113,6 +113,7 @@ require (
 
 replace (
 	github.com/gardener/gardener-resource-manager/api => github.com/gardener/gardener-resource-manager/api v0.25.0
+	github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.47.0-ske-1
 	github.com/golang/mock => github.com/golang/mock v1.6.0
 	github.com/gophercloud/gophercloud => github.com/gophercloud/gophercloud v0.20.0
 	github.com/gophercloud/utils => github.com/gophercloud/utils v0.0.0-20210909165623-d7085207ff6d

@@ -658,6 +658,7 @@ type OpenStackMachineClassSpec struct {
 	SecurityGroups       []string
 	Tags                 map[string]string
 	NetworkID            string
+	NetworkIDv6          string
 	Networks             []OpenStackNetwork
 	SubnetID             *string
 	SecretRef            *corev1.SecretReference

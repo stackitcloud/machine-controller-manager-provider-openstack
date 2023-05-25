@@ -70,7 +70,7 @@ github.com/fsnotify/fsnotify
 github.com/gardener/gardener/hack
 github.com/gardener/gardener/hack/.ci
 github.com/gardener/gardener/hack/api-reference/template
-# github.com/gardener/machine-controller-manager v0.47.0
+# github.com/gardener/machine-controller-manager v0.47.0 => github.com/stackitcloud/machine-controller-manager v0.47.0-ske-1
 ## explicit; go 1.17
 github.com/gardener/machine-controller-manager/pkg/apis/machine
 github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1
@@ -1089,6 +1089,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 # github.com/gardener/gardener-resource-manager/api => github.com/gardener/gardener-resource-manager/api v0.25.0
+# github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.47.0-ske-1
 # github.com/golang/mock => github.com/golang/mock v1.6.0
 # github.com/gophercloud/gophercloud => github.com/gophercloud/gophercloud v0.20.0
 # github.com/gophercloud/utils => github.com/gophercloud/utils v0.0.0-20210909165623-d7085207ff6d

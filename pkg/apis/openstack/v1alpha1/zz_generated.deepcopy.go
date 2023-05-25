@@ -59,6 +59,11 @@ func (in *MachineProviderConfigSpec) DeepCopyInto(out *MachineProviderConfigSpec
 		*out = new(string)
 		**out = **in
 	}
+	if in.SubnetIDs != nil {
+		in, out := &in.SubnetIDs, &out.SubnetIDs
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.RootDiskType != nil {
 		in, out := &in.RootDiskType, &out.RootDiskType
 		*out = new(string)
