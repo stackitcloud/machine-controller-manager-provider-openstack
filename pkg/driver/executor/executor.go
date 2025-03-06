@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
@@ -176,12 +177,19 @@ func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pe
 			}
 
 			klog.V(5).Infof("waiting for server [ID=%q] and current status %v, to reach status %v.", serverID, current.Status, target)
+			// NOTE: for the createMachine call this is client.ServerStatusActive
 			if strSliceContains(target, current.Status) {
 				return true, nil
 			}
 
 			// if there is no pending statuses defined or current status is in the pending list, then continue polling
 			if len(pending) == 0 || strSliceContains(pending, current.Status) {
+				return false, nil
+			}
+
+			// HACK: machines that are in error because of "No valid host was found" error are considered as pending
+			if current.Status == client.ServerStatusError && current.Fault.Code == 500 && strings.Contains(current.Fault.Message, "No valid host was found.") {
+				klog.V(1).Infof("server [ID=%q] has status 500 with a %q error, continue to poll to reduce amount of recreates", serverID, "No valid host was found.")
 				return false, nil
 			}
 
