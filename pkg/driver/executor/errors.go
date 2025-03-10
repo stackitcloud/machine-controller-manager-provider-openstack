@@ -13,6 +13,7 @@ import (
 //
 //	"No valid host was found."
 //	"No valid host was found. There are not enough hosts available."
+// TODO: drop commit 5b2cee7b842173b77ebaca087c472be0fde0a74b once https://github.com/gardener/machine-controller-manager-provider-openstack/pull/246 is released
 const NoValidHost = "No valid host was found"
 
 var (
