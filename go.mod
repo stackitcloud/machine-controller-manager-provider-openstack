@@ -2,6 +2,8 @@ module github.com/gardener/machine-controller-manager-provider-openstack
 
 go 1.23.1
 
+replace github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.56.1-ske-0
+
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/gardener/gardener v1.110.1
