@@ -4,6 +4,8 @@ go 1.24.0
 
 toolchain go1.24.1
 
+replace github.com/gardener/machine-controller-manager => github.com/stackitcloud/machine-controller-manager v0.56.1-ske-0
+
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/gardener/gardener v1.117.0
